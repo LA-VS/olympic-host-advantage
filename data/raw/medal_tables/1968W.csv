@@ -1,0 +1,16 @@
+games_id,noc,gold,silver,bronze,template_host
+1968W,NOR,6,6,2,False
+1968W,URS,5,5,3,False
+1968W,FRA,4,3,2,True
+1968W,ITA,4,0,0,False
+1968W,AUT,3,4,4,False
+1968W,NED,3,3,3,False
+1968W,SWE,3,2,3,False
+1968W,FRG,2,2,3,False
+1968W,USA,1,5,1,False
+1968W,GDR,1,2,2,False
+1968W,FIN,1,2,2,False
+1968W,TCH,1,2,1,False
+1968W,CAN,1,1,1,False
+1968W,SUI,0,2,4,False
+1968W,ROU,0,0,1,False

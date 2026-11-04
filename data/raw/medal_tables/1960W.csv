@@ -1,0 +1,15 @@
+games_id,noc,gold,silver,bronze,template_host
+1960W,URS,7,5,9,False
+1960W,EUA,4,3,1,False
+1960W,USA,3,4,3,True
+1960W,NOR,3,3,0,False
+1960W,SWE,3,2,2,False
+1960W,FIN,2,3,3,False
+1960W,CAN,2,1,1,False
+1960W,SUI,2,0,0,False
+1960W,AUT,1,2,3,False
+1960W,FRA,1,0,2,False
+1960W,NED,0,1,1,False
+1960W,POL,0,1,1,False
+1960W,TCH,0,1,0,False
+1960W,ITA,0,0,1,False

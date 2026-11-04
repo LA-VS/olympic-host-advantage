@@ -1,0 +1,38 @@
+games_id,year,season,city,host_noc,note
+1960S,1960,Summer,Rome,ITA,
+1964S,1964,Summer,Tokyo,JPN,
+1968S,1968,Summer,Mexico City,MEX,
+1972S,1972,Summer,Munich,FRG,
+1976S,1976,Summer,Montreal,CAN,Boycott by most African NOCs
+1980S,1980,Summer,Moscow,URS,Boycott led by the USA
+1984S,1984,Summer,Los Angeles,USA,Boycott led by the Soviet Union
+1988S,1988,Summer,Seoul,KOR,
+1992S,1992,Summer,Barcelona,ESP,
+1996S,1996,Summer,Atlanta,USA,
+2000S,2000,Summer,Sydney,AUS,
+2004S,2004,Summer,Athens,GRE,
+2008S,2008,Summer,Beijing,CHN,
+2012S,2012,Summer,London,GBR,
+2016S,2016,Summer,Rio de Janeiro,BRA,
+2020S,2020,Summer,Tokyo,JPN,Held in 2021
+2024S,2024,Summer,Paris,FRA,
+2028S,2028,Summer,Los Angeles,USA,Future Games: used only for the next host indicator
+1960W,1960,Winter,Squaw Valley,USA,
+1964W,1964,Winter,Innsbruck,AUT,
+1968W,1968,Winter,Grenoble,FRA,
+1972W,1972,Winter,Sapporo,JPN,
+1976W,1976,Winter,Innsbruck,AUT,
+1980W,1980,Winter,Lake Placid,USA,
+1984W,1984,Winter,Sarajevo,YUG,
+1988W,1988,Winter,Calgary,CAN,
+1992W,1992,Winter,Albertville,FRA,
+1994W,1994,Winter,Lillehammer,NOR,
+1998W,1998,Winter,Nagano,JPN,
+2002W,2002,Winter,Salt Lake City,USA,
+2006W,2006,Winter,Torino,ITA,
+2010W,2010,Winter,Vancouver,CAN,
+2014W,2014,Winter,Sochi,RUS,
+2018W,2018,Winter,PyeongChang,KOR,
+2022W,2022,Winter,Beijing,CHN,
+2026W,2026,Winter,Milano Cortina,ITA,
+2030W,2030,Winter,French Alps,FRA,Future Games: used only for the next host indicator
