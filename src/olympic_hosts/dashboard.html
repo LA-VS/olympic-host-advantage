@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Olympic Host Advantage</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.6.0/echarts.min.js"></script>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink2: #52514e; --muted: #898781;
+  --grid: #e1e0d9; --axis: #c3c2b7; --ring: rgba(11,11,11,0.10); --wash: rgba(11,11,11,0.04);
+  --summer: #eb6834; --winter: #2a78d6; --usual: #c3c2b7; --good: #006300;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --ring: rgba(255,255,255,0.10); --wash: rgba(255,255,255,0.05);
+    --summer: #d95926; --winter: #3987e5; --usual: #5c5b56; --good: #0ca30c;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink2: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --axis: #383835; --ring: rgba(255,255,255,0.10); --wash: rgba(255,255,255,0.05);
+  --summer: #d95926; --winter: #3987e5; --usual: #5c5b56; --good: #0ca30c;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 1240px; margin: 0 auto; padding: 24px 16px 48px; }
+header h1 { font-size: 22px; margin: 0 0 4px; }
+header p { margin: 0 0 20px; color: var(--ink2); }
+.card { background: var(--surface); border: 1px solid var(--ring); border-radius: 10px; }
+
+/* KPI row */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.kpi { display: flex; flex-direction: column; justify-content: flex-start; padding: 14px 16px; text-align: left; font: inherit; color: inherit; position: relative; }
+.kpi .label { color: var(--ink2); font-size: 13px; display: flex; align-items: center; gap: 6px; }
+.kpi .value { font-size: 28px; font-weight: 600; margin-top: 4px; }
+.kpi .sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
+button.kpi { cursor: pointer; }
+button.kpi:hover { background: linear-gradient(var(--wash), var(--wash)), var(--surface); }
+button.kpi[aria-pressed="true"] { outline: 2px solid var(--ink); outline-offset: -2px; }
+button.kpi[aria-pressed="true"]::after { content: "✓"; position: absolute; top: 10px; right: 12px; font-weight: 700; }
+button.kpi:focus-visible, .seg button:focus-visible, select:focus-visible { outline: 2px solid var(--winter); outline-offset: 2px; }
+.key { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+
+/* Filter row */
+.filters { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: end; padding: 12px 16px; margin-bottom: 16px; }
+.filters label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--ink2); }
+select { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--axis); border-radius: 6px; padding: 5px 8px; }
+.seg { display: inline-flex; border: 1px solid var(--axis); border-radius: 6px; overflow: hidden; }
+.seg button { font: inherit; color: var(--ink); background: var(--surface); border: 0; padding: 5px 12px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--axis); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+.chip { display: none; align-items: center; gap: 6px; background: var(--wash); border: 1px solid var(--axis); border-radius: 999px; padding: 4px 10px; font-size: 13px; cursor: pointer; }
+.chip.on { display: inline-flex; }
+.reset { margin-left: auto; font: inherit; background: none; border: 0; color: var(--ink2); text-decoration: underline; cursor: pointer; padding: 5px 0; }
+
+/* Charts */
+.charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.charts .wide { grid-column: 1 / -1; }
+.panel { padding: 16px; min-width: 0; }
+.panel h2 { font-size: 15px; margin: 0; }
+.panel .note { color: var(--ink2); font-size: 13px; margin: 2px 0 8px; }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--ink2); margin-bottom: 4px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.chart { width: 100%; height: 320px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+th, td { text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--grid); }
+th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align: left; }
+th { color: var(--ink2); font-weight: 600; }
+tbody tr { cursor: pointer; }
+tbody tr:hover { background: var(--wash); }
+tbody tr.picked { font-weight: 600; }
+.tablewrap { max-height: 420px; overflow: auto; }
+@media (max-width: 760px) { .charts { grid-template-columns: 1fr; } .reset { margin-left: 0; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>Does hosting the Games increase a nation's medal haul?</h1>
+  <p id="intro"></p>
+</header>
+
+<section class="kpis" aria-label="Key figures">
+  <div class="kpi card"><div class="label">Hostings</div><div class="value" id="k-n"></div><div class="sub" id="k-n-sub"></div></div>
+  <div class="kpi card"><div class="label">Median uplift</div><div class="value" id="k-uplift"></div><div class="sub">home share over usual share</div></div>
+  <div class="kpi card"><div class="label">Medals won at home</div><div class="value" id="k-medals"></div><div class="sub" id="k-golds"></div></div>
+  <button class="kpi card" data-kpi="season" data-val="Summer" aria-pressed="false"><div class="label"><i class="key" style="background:var(--summer)"></i>Summer hostings</div><div class="value" id="k-summer"></div><div class="sub">click to filter</div></button>
+  <button class="kpi card" data-kpi="season" data-val="Winter" aria-pressed="false"><div class="label"><i class="key" style="background:var(--winter)"></i>Winter hostings</div><div class="value" id="k-winter"></div><div class="sub">click to filter</div></button>
+  <button class="kpi card" data-kpi="outcome" data-val="beat" aria-pressed="false"><div class="label">Beat their usual share</div><div class="value" id="k-beat"></div><div class="sub">click to filter</div></button>
+  <button class="kpi card" data-kpi="outcome" data-val="short" aria-pressed="false"><div class="label">Fell short</div><div class="value" id="k-short"></div><div class="sub">click to filter</div></button>
+</section>
+
+<section class="filters card" aria-label="Filters">
+  <label>Season<div class="seg" id="f-season">
+    <button data-val="all" aria-pressed="true">All</button><button data-val="Summer" aria-pressed="false">Summer</button><button data-val="Winter" aria-pressed="false">Winter</button>
+  </div></label>
+  <label>From<select id="f-from"></select></label>
+  <label>To<select id="f-to"></select></label>
+  <label>Host nation<select id="f-nation"><option value="all">All nations</option></select></label>
+  <label>Outcome<div class="seg" id="f-outcome">
+    <button data-val="all" aria-pressed="true">All</button><button data-val="beat" aria-pressed="false">Beat usual</button><button data-val="short" aria-pressed="false">Fell short</button>
+  </div></label>
+  <span class="chip" id="f-picked" role="button" tabindex="0"></span>
+  <button class="reset" id="f-reset">Reset all</button>
+</section>
+
+<section class="charts">
+  <div class="panel card wide">
+    <h2>Medal share at home against usual share</h2>
+    <p class="note">Usual share is the host's average at every other Games of the same season.</p>
+    <div class="legend"><span><i class="key" style="background:var(--summer)"></i>Summer, at home</span><span><i class="key" style="background:var(--winter)"></i>Winter, at home</span><span><i class="key" style="background:var(--usual)"></i>Usual share</span></div>
+    <div class="chart" id="c-bars"></div>
+  </div>
+  <div class="panel card">
+    <h2>Before, during and after hosting</h2>
+    <p class="note" id="c-event-note"></p>
+    <div class="legend" id="c-event-legend"></div>
+    <div class="chart" id="c-event"></div>
+  </div>
+  <div class="panel card">
+    <h2>Every host against its own normal</h2>
+    <p class="note">Points above the line won a bigger share at home than usual.</p>
+    <div class="legend"><span><i class="key" style="background:var(--summer);border-radius:50%"></i>Summer</span><span><i class="key" style="background:var(--winter);transform:rotate(45deg) scale(.85)"></i>Winter</span></div>
+    <div class="chart" id="c-scatter"></div>
+  </div>
+  <div class="panel card wide">
+    <h2>Hostings in the current selection</h2>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Games</th><th>Host</th><th>Medals</th><th>Golds</th><th>Share at home</th><th>Usual share</th><th>Uplift</th></tr></thead>
+      <tbody id="t-body"></tbody>
+    </table></div>
+  </div>
+</section>
+</main>
+
+<script>
+const DATA = /*DATA*/;
+
+const H = DATA.hostings.map(h => ({
+  ...h, ratio: h.host_share / h.usual_share, beat: h.host_share > h.usual_share,
+  label: `${h.city} ${h.year}`,
+}));
+const $ = id => document.getElementById(id);
+const YEARS = [...new Set(H.map(h => h.year))].sort((a, b) => a - b);
+$("intro").textContent = `${H.length} Summer and Winter Games, ${YEARS[0]} to ${YEARS.at(-1)}. Click a KPI, a bar, a point or a table row to filter; click again to clear.`;
+const state = { season: "all", outcome: "all", nation: "all", from: YEARS[0], to: YEARS.at(-1), picked: new Set() };
+{
+  const q = new URLSearchParams(location.hash.slice(1));
+  for (const k of ["season", "outcome", "nation"]) if (q.get(k)) state[k] = q.get(k);
+  for (const k of ["from", "to"]) if (q.get(k)) state[k] = +q.get(k);
+  if (q.get("picked")) state.picked = new Set(q.get("picked").split(","));
+}
+function saveHash() {
+  const q = new URLSearchParams();
+  for (const k of ["season", "outcome", "nation"]) if (state[k] !== "all") q.set(k, state[k]);
+  if (state.from !== YEARS[0]) q.set("from", state.from);
+  if (state.to !== YEARS.at(-1)) q.set("to", state.to);
+  if (state.picked.size) q.set("picked", [...state.picked].join(","));
+  try { history.replaceState(null, "", q.toString() ? "#" + q : location.pathname); } catch { /* file URLs in some browsers */ }
+}
+
+/* filtering */
+// Every filter except `skip`, so a KPI toggle can still show the count for its other option.
+function base(skip) {
+  return H.filter(h =>
+    (skip === "season" || state.season === "all" || h.season === state.season) &&
+    (skip === "outcome" || state.outcome === "all" || (state.outcome === "beat") === h.beat) &&
+    (state.nation === "all" || h.nation_id === state.nation) &&
+    h.year >= state.from && h.year <= state.to);
+}
+const applyPicked = rows => state.picked.size ? rows.filter(h => state.picked.has(h.games_id)) : rows;
+
+/* controls */
+for (const id of ["f-from", "f-to"]) {
+  for (const y of YEARS) { const o = document.createElement("option"); o.value = y; o.textContent = y; $(id).append(o); }
+}
+$("f-to").value = state.to;
+const nations = [...new Map(H.map(h => [h.nation_id, h.nation])).entries()].sort((a, b) => a[1].localeCompare(b[1]));
+for (const [id, name] of nations) {
+  const n = H.filter(h => h.nation_id === id).length;
+  const o = document.createElement("option"); o.value = id; o.textContent = `${name} (${n})`; $("f-nation").append(o);
+}
+function toggle(key, val) { state[key] = state[key] === val ? "all" : val; render(); }
+document.querySelectorAll("button.kpi").forEach(b => b.addEventListener("click", () => toggle(b.dataset.kpi, b.dataset.val)));
+for (const key of ["season", "outcome"]) {
+  $("f-" + key).querySelectorAll("button").forEach(b => b.addEventListener("click", () => { state[key] = b.dataset.val; render(); }));
+}
+$("f-from").addEventListener("change", e => { state.from = +e.target.value; if (state.from > state.to) state.to = state.from; render(); });
+$("f-to").addEventListener("change", e => { state.to = +e.target.value; if (state.to < state.from) state.from = state.to; render(); });
+$("f-nation").addEventListener("change", e => { state.nation = e.target.value; render(); });
+$("f-picked").addEventListener("click", () => { state.picked.clear(); render(); });
+$("f-picked").addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { state.picked.clear(); render(); } });
+$("f-reset").addEventListener("click", () => {
+  Object.assign(state, { season: "all", outcome: "all", nation: "all", from: YEARS[0], to: YEARS.at(-1) });
+  state.picked.clear(); render();
+});
+function pick(id) { state.picked.has(id) ? state.picked.delete(id) : state.picked.add(id); render(); }
+
+/* formatting */
+const pct = v => (100 * v).toFixed(1) + "%";
+const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const seasonColour = s => css(s === "Summer" ? "--summer" : "--winter");
+const median = xs => { if (!xs.length) return NaN; const s = [...xs].sort((a, b) => a - b), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+
+/* charts */
+const charts = { bars: echarts.init($("c-bars")), event: echarts.init($("c-event")), scatter: echarts.init($("c-scatter")) };
+charts.bars.on("click", p => pick(p.data.id));
+charts.scatter.on("click", p => p.data && p.data.id && pick(p.data.id));
+window.addEventListener("resize", () => Object.values(charts).forEach(c => c.resize()));
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", render);
+
+function axisStyle() {
+  return {
+    axisLine: { lineStyle: { color: css("--axis") } }, axisTick: { show: false },
+    axisLabel: { color: css("--ink2") }, splitLine: { lineStyle: { color: css("--grid") } },
+  };
+}
+function tooltipStyle() {
+  return { backgroundColor: css("--surface"), borderColor: css("--axis"), textStyle: { color: css("--ink"), fontSize: 13 }, extraCssText: "box-shadow:0 2px 8px rgba(0,0,0,.15);" };
+}
+const dimmed = h => state.picked.size && !state.picked.has(h.games_id);
+const tipRow = (colour, value, label) =>
+  `<div style="display:flex;align-items:center;gap:8px"><i style="width:12px;height:2px;background:${colour}"></i><b>${value}</b><span style="color:${css("--ink2")}">${label}</span></div>`;
+
+function drawBars(rows) {
+  const el = $("c-bars");
+  el.style.height = Math.max(160, rows.length * 26 + 50) + "px";
+  charts.bars.resize();
+  const ax = axisStyle();
+  charts.bars.setOption({
+    animationDuration: 250, grid: { left: 140, right: 24, top: 8, bottom: 28 },
+    tooltip: { ...tooltipStyle(), trigger: "axis", axisPointer: { type: "shadow", shadowStyle: { color: css("--wash") } },
+      formatter: ps => { const h = rows[ps[0].dataIndex]; return `<div style="margin-bottom:4px">${h.label}, ${h.nation}</div>` +
+        tipRow(seasonColour(h.season), pct(h.host_share), "at home") + tipRow(css("--usual"), pct(h.usual_share), "usual") +
+        `<div style="margin-top:4px">${h.ratio.toFixed(2)}× usual</div>`; } },
+    xAxis: { type: "value", ...ax, axisLabel: { ...ax.axisLabel, formatter: v => v + "%" } },
+    yAxis: { type: "category", inverse: true, data: rows.map(h => h.label), ...ax, splitLine: { show: false } },
+    series: [
+      { name: "At home", type: "bar", barGap: "10%", barCategoryGap: "30%",
+        data: rows.map(h => ({ value: +(100 * h.host_share).toFixed(2), id: h.games_id,
+          itemStyle: { color: seasonColour(h.season), opacity: dimmed(h) ? 0.25 : 1, borderRadius: [0, 4, 4, 0] } })) },
+      { name: "Usual", type: "bar",
+        data: rows.map(h => ({ value: +(100 * h.usual_share).toFixed(2), id: h.games_id,
+          itemStyle: { color: css("--usual"), opacity: dimmed(h) ? 0.25 : 1, borderRadius: [0, 4, 4, 0] } })) },
+    ],
+  }, true);
+}
+
+const REL = [-3, -2, -1, 0, 1, 2, 3];
+const REL_LABEL = r => r === 0 ? "Home" : r < 0 ? `${-r} before` : `${r} after`;
+function drawEvent(rows) {
+  const ids = new Set(rows.map(h => h.games_id));
+  const seasons = ["Summer", "Winter"].filter(s => rows.some(h => h.season === s));
+  const series = seasons.map(s => {
+    const games = new Set(rows.filter(h => h.season === s).map(h => h.games_id));
+    const ev = DATA.events.filter(e => games.has(e.host_games));
+    const pts = REL.map(r => { const v = ev.filter(e => e.rel === r).map(e => e.change_pp); return v.length ? +(v.reduce((a, b) => a + b, 0) / v.length).toFixed(2) : null; });
+    return { name: s, type: "line", data: pts, connectNulls: true, symbol: s === "Summer" ? "circle" : "diamond", symbolSize: 8,
+      lineStyle: { width: 2, color: seasonColour(s) }, itemStyle: { color: seasonColour(s), borderColor: css("--surface"), borderWidth: 2 } };
+  });
+  const n = new Set(DATA.events.filter(e => ids.has(e.host_games)).map(e => e.host_games)).size;
+  $("c-event-note").textContent = n
+    ? `Mean change in medal share, in percentage points, from each host's own level three and two Games before. ${n} of ${rows.length} hostings have that history.`
+    : "None of the selected hostings has three earlier Games of the same season to compare with.";
+  const legend = $("c-event-legend"); legend.replaceChildren();
+  for (const s of seasons) { const sp = document.createElement("span"); sp.innerHTML = `<i class="key" style="background:${seasonColour(s)};height:2px;width:14px"></i>`; sp.append(s); legend.append(sp); }
+  const ax = axisStyle();
+  charts.event.setOption({
+    animationDuration: 250, grid: { left: 60, right: 28, top: 12, bottom: 36 },
+    tooltip: { ...tooltipStyle(), trigger: "axis", axisPointer: { type: "line", lineStyle: { color: css("--muted") } },
+      formatter: ps => `<div style="margin-bottom:4px">${ps[0].axisValue}</div>` + ps.filter(p => p.value != null)
+        .map(p => tipRow(p.color, (p.value > 0 ? "+" : "") + p.value + " pp", p.seriesName)).join("") },
+    xAxis: { type: "category", data: REL.map(REL_LABEL), boundaryGap: false, ...ax, axisLabel: { ...ax.axisLabel, margin: 14 }, splitLine: { show: false } },
+    yAxis: { type: "value", ...ax, axisLabel: { ...ax.axisLabel, formatter: v => v + " pp" } },
+    series: series.length ? [{ ...series[0], markLine: { silent: true, symbol: "none", label: { show: false }, lineStyle: { color: css("--axis"), type: "solid" }, data: [{ yAxis: 0 }] } }, ...series.slice(1)] : [],
+  }, true);
+}
+
+function drawScatter(rows) {
+  const max = 5 * Math.ceil(Math.max(5, ...rows.map(h => 100 * Math.max(h.host_share, h.usual_share))) * 1.02 / 5);
+  const ax = axisStyle();
+  const series = ["Summer", "Winter"].map(s => ({
+    name: s, type: "scatter", symbol: s === "Summer" ? "circle" : "diamond", symbolSize: s === "Summer" ? 10 : 12,
+    data: rows.filter(h => h.season === s).map(h => ({ value: [+(100 * h.usual_share).toFixed(2), +(100 * h.host_share).toFixed(2)], id: h.games_id, h,
+      itemStyle: { color: seasonColour(s), opacity: dimmed(h) ? 0.25 : 1, borderColor: css("--surface"), borderWidth: 2 } })),
+    emphasis: { scale: 1.4 },
+  }));
+  series.push({ type: "line", silent: true, symbol: "none", data: [[0, 0], [max, max]], lineStyle: { color: css("--muted"), type: "dashed", width: 1 }, tooltip: { show: false } });
+  charts.scatter.setOption({
+    animationDuration: 250, grid: { left: 44, right: 16, top: 12, bottom: 40 },
+    tooltip: { ...tooltipStyle(), trigger: "item", formatter: p => { const h = p.data.h; return `<div style="margin-bottom:4px">${h.label}, ${h.nation}</div>` +
+      tipRow(seasonColour(h.season), pct(h.host_share), "at home") + tipRow(css("--usual"), pct(h.usual_share), "usual"); } },
+    xAxis: { type: "value", max, name: "Usual share", nameLocation: "middle", nameGap: 26, nameTextStyle: { color: css("--ink2") }, ...ax, axisLabel: { ...ax.axisLabel, formatter: v => v + "%" } },
+    yAxis: { type: "value", max, ...ax, axisLabel: { ...ax.axisLabel, formatter: v => v + "%" } },
+    series,
+  }, true);
+}
+
+function drawTable(rows) {
+  const body = $("t-body"); body.replaceChildren();
+  for (const h of rows) {
+    const tr = document.createElement("tr");
+    if (state.picked.has(h.games_id)) tr.className = "picked";
+    for (const v of [h.label, h.nation, h.medals, h.golds, pct(h.host_share), pct(h.usual_share), h.ratio.toFixed(2) + "×"]) {
+      const td = document.createElement("td"); td.textContent = v; tr.append(td);
+    }
+    tr.addEventListener("click", () => pick(h.games_id));
+    body.append(tr);
+  }
+}
+
+/* render */
+function render() {
+  const visible = base();
+  for (const id of [...state.picked]) if (!visible.some(h => h.games_id === id)) state.picked.delete(id);
+  const sel = applyPicked(visible);
+
+  // KPIs follow every filter, including bars or points picked in a chart.
+  $("k-n").textContent = sel.length;
+  $("k-n-sub").textContent = sel.length === H.length ? "all Games in the data" : `of ${H.length} in the data`;
+  const up = median(sel.map(h => h.ratio));
+  $("k-uplift").textContent = isNaN(up) ? "None" : up.toFixed(2) + "×";
+  $("k-medals").textContent = sel.reduce((a, h) => a + h.medals, 0).toLocaleString();
+  $("k-golds").textContent = sel.reduce((a, h) => a + h.golds, 0).toLocaleString() + " of them gold";
+  const bySeason = applyPicked(base("season")), byOutcome = applyPicked(base("outcome"));
+  $("k-summer").textContent = bySeason.filter(h => h.season === "Summer").length;
+  $("k-winter").textContent = bySeason.filter(h => h.season === "Winter").length;
+  $("k-beat").textContent = byOutcome.filter(h => h.beat).length;
+  $("k-short").textContent = byOutcome.filter(h => !h.beat).length;
+  document.querySelectorAll("button.kpi").forEach(b => b.setAttribute("aria-pressed", state[b.dataset.kpi] === b.dataset.val));
+
+  // Filter controls mirror the state, so a KPI click and a filter click stay in step.
+  for (const key of ["season", "outcome"]) $("f-" + key).querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", state[key] === b.dataset.val));
+  $("f-from").value = state.from; $("f-to").value = state.to; $("f-nation").value = state.nation;
+  const chip = $("f-picked");
+  chip.classList.toggle("on", state.picked.size > 0);
+  chip.textContent = `${state.picked.size} picked in charts ✕`;
+
+  // The bar chart and scatter keep unpicked hostings visible but dimmed; the event study and table use the selection.
+  drawBars(visible);
+  drawScatter(visible);
+  drawEvent(sel);
+  drawTable(sel);
+  saveHash();
+}
+render();
+</script>
+</body>
+</html>

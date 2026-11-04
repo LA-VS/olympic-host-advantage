@@ -1,7 +1,7 @@
 # Power BI report
 
-GitHub cannot render a `.pbix` file, so the report is committed as `reports/olympic_host_advantage.pbix`
-with screenshots of each page in `reports/figures/powerbi_*.png`.
+The interactive dashboard in [`index.html`](index.html) replaces the coursework's Power BI report.
+These notes rebuild the Power BI version on the same schema, for anyone who wants it in Power BI Desktop.
 
 ## Data
 

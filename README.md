@@ -7,6 +7,8 @@ The boost arrives with the home Games and, on average, is gone by the next one.
 
 ![29 of 35 hosts beat their own usual medal share](reports/figures/host_vs_baseline.png)
 
+**[Explore the interactive dashboard](https://la-vs.github.io/olympic-host-advantage/)**: filter by season, years, host or outcome and every figure updates.
+
 ## How to run it
 
 Needs [uv](https://docs.astral.sh/uv/). Everything else, including Python 3.12, is installed by uv from the lock file.
@@ -158,9 +160,22 @@ Poisson came first; the Cameron and Trivedi test rejected equal mean and varianc
 * Model golds on their own, since medal tables rank by gold.
 * Add the Paralympic Games, which share host cities and would double the number of events.
 
-## Power BI dashboard
+## Interactive dashboard
 
-The original coursework included a Power BI report. [`docs/powerbi.md`](docs/powerbi.md) sets out the model, measures and pages for rebuilding it on this schema; `scripts/export_powerbi.py` writes the tables as CSV.
+[`docs/index.html`](docs/index.html) is a single page dashboard, served by GitHub Pages at
+**[la-vs.github.io/olympic-host-advantage](https://la-vs.github.io/olympic-host-advantage/)**. It needs no server or account.
+
+[![KPIs, filters and the home against usual share chart](reports/figures/dashboard.png)](https://la-vs.github.io/olympic-host-advantage/)
+
+* **KPIs at the top.** The Summer, Winter, beat and fell short cards are also filters: click one to select it, click again to clear.
+* **Filters beneath.** Season, year range, host nation and outcome. Filters and KPI cards stay in step.
+* **Charts and table below**, all on the same selection. Clicking a bar, point or row picks that hosting; the other hostings dim in the charts, and the KPIs, event study and table narrow to the pick.
+* **The page address holds the filters**, so a filtered view can be bookmarked or shared.
+
+The median uplift card is a plain ratio of shares, so it differs from the model's 1.65, which adjusts for GDP, population and the medals on offer.
+`uv run python scripts/build_dashboard.py` rebuilds the page from the database, and a test fails if the committed page is out of date.
+
+The original coursework used Power BI. [`docs/powerbi.md`](docs/powerbi.md) sets out the model, measures and pages for rebuilding that report on this schema, and `scripts/export_powerbi.py` writes the tables as CSV.
 
 ## Repo layout
 
@@ -168,14 +183,15 @@ The original coursework included a Power BI report. [`docs/powerbi.md`](docs/pow
 data/raw/                 medal tables, participant lists and World Bank data, never edited by hand
 data/reference/           hand curated hosts and NOC lineages
 sql/                      schema, analysis panel view and analysis queries
-src/olympic_hosts/        fetching, database build, models, chart style
+src/olympic_hosts/        fetching, database build, models, chart style, dashboard template
 notebooks/                the narrative notebook, outputs saved
 reports/figures/          charts used in this README
+docs/                     the interactive dashboard (GitHub Pages) and Power BI notes
 tests/                    pytest for parsing, the data model and the models
-scripts/                  fetch data, build the database, export for Power BI
+scripts/                  fetch data, build the database, build the dashboard, export for Power BI
 ```
 
 ## Origin
 
 This project began as an Olympics SQLite and Power BI project for my Level 4 Data Analyst apprenticeship and was rebuilt to a professional standard:
-a normalised data model, data fetched by script from cited sources, more than twice the number of Games, a fixed effects count model in place of descriptive comparison, and tests throughout.
+a normalised data model, data fetched by script from cited sources, more than twice the number of Games, a fixed effects count model in place of descriptive comparison, an interactive dashboard, and tests throughout.

@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Olympic Host Advantage</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.6.0/echarts.min.js"></script>
+<style>
+:root {
+  color-scheme: light;
+  --page: #f9f9f7; --surface: #fcfcfb; --ink: #0b0b0b; --ink2: #52514e; --muted: #898781;
+  --grid: #e1e0d9; --axis: #c3c2b7; --ring: rgba(11,11,11,0.10); --wash: rgba(11,11,11,0.04);
+  --summer: #eb6834; --winter: #2a78d6; --usual: #c3c2b7; --good: #006300;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --axis: #383835; --ring: rgba(255,255,255,0.10); --wash: rgba(255,255,255,0.05);
+    --summer: #d95926; --winter: #3987e5; --usual: #5c5b56; --good: #0ca30c;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0d0d0d; --surface: #1a1a19; --ink: #f0efec; --ink2: #c3c2b7; --muted: #898781;
+  --grid: #2c2c2a; --axis: #383835; --ring: rgba(255,255,255,0.10); --wash: rgba(255,255,255,0.05);
+  --summer: #d95926; --winter: #3987e5; --usual: #5c5b56; --good: #0ca30c;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 1240px; margin: 0 auto; padding: 24px 16px 48px; }
+header h1 { font-size: 22px; margin: 0 0 4px; }
+header p { margin: 0 0 20px; color: var(--ink2); }
+.card { background: var(--surface); border: 1px solid var(--ring); border-radius: 10px; }
+
+/* KPI row */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.kpi { display: flex; flex-direction: column; justify-content: flex-start; padding: 14px 16px; text-align: left; font: inherit; color: inherit; position: relative; }
+.kpi .label { color: var(--ink2); font-size: 13px; display: flex; align-items: center; gap: 6px; }
+.kpi .value { font-size: 28px; font-weight: 600; margin-top: 4px; }
+.kpi .sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
+button.kpi { cursor: pointer; }
+button.kpi:hover { background: linear-gradient(var(--wash), var(--wash)), var(--surface); }
+button.kpi[aria-pressed="true"] { outline: 2px solid var(--ink); outline-offset: -2px; }
+button.kpi[aria-pressed="true"]::after { content: "✓"; position: absolute; top: 10px; right: 12px; font-weight: 700; }
+button.kpi:focus-visible, .seg button:focus-visible, select:focus-visible { outline: 2px solid var(--winter); outline-offset: 2px; }
+.key { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+
+/* Filter row */
+.filters { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: end; padding: 12px 16px; margin-bottom: 16px; }
+.filters label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--ink2); }
+select { font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--axis); border-radius: 6px; padding: 5px 8px; }
+.seg { display: inline-flex; border: 1px solid var(--axis); border-radius: 6px; overflow: hidden; }
+.seg button { font: inherit; color: var(--ink); background: var(--surface); border: 0; padding: 5px 12px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--axis); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+.chip { display: none; align-items: center; gap: 6px; background: var(--wash); border: 1px solid var(--axis); border-radius: 999px; padding: 4px 10px; font-size: 13px; cursor: pointer; }
+.chip.on { display: inline-flex; }
+.reset { margin-left: auto; font: inherit; background: none; border: 0; color: var(--ink2); text-decoration: underline; cursor: pointer; padding: 5px 0; }
+
+/* Charts */
+.charts { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.charts .wide { grid-column: 1 / -1; }
+.panel { padding: 16px; min-width: 0; }
+.panel h2 { font-size: 15px; margin: 0; }
+.panel .note { color: var(--ink2); font-size: 13px; margin: 2px 0 8px; }
+.legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 12px; color: var(--ink2); margin-bottom: 4px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.chart { width: 100%; height: 320px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+th, td { text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--grid); }
+th:first-child, td:first-child, th:nth-child(2), td:nth-child(2) { text-align: left; }
+th { color: var(--ink2); font-weight: 600; }
+tbody tr { cursor: pointer; }
+tbody tr:hover { background: var(--wash); }
+tbody tr.picked { font-weight: 600; }
+.tablewrap { max-height: 420px; overflow: auto; }
+@media (max-width: 760px) { .charts { grid-template-columns: 1fr; } .reset { margin-left: 0; } }
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>Does hosting the Games increase a nation's medal haul?</h1>
+  <p id="intro"></p>
+</header>
+
+<section class="kpis" aria-label="Key figures">
+  <div class="kpi card"><div class="label">Hostings</div><div class="value" id="k-n"></div><div class="sub" id="k-n-sub"></div></div>
+  <div class="kpi card"><div class="label">Median uplift</div><div class="value" id="k-uplift"></div><div class="sub">home share over usual share</div></div>
+  <div class="kpi card"><div class="label">Medals won at home</div><div class="value" id="k-medals"></div><div class="sub" id="k-golds"></div></div>
+  <button class="kpi card" data-kpi="season" data-val="Summer" aria-pressed="false"><div class="label"><i class="key" style="background:var(--summer)"></i>Summer hostings</div><div class="value" id="k-summer"></div><div class="sub">click to filter</div></button>
+  <button class="kpi card" data-kpi="season" data-val="Winter" aria-pressed="false"><div class="label"><i class="key" style="background:var(--winter)"></i>Winter hostings</div><div class="value" id="k-winter"></div><div class="sub">click to filter</div></button>
+  <button class="kpi card" data-kpi="outcome" data-val="beat" aria-pressed="false"><div class="label">Beat their usual share</div><div class="value" id="k-beat"></div><div class="sub">click to filter</div></button>
+  <button class="kpi card" data-kpi="outcome" data-val="short" aria-pressed="false"><div class="label">Fell short</div><div class="value" id="k-short"></div><div class="sub">click to filter</div></button>
+</section>
+
+<section class="filters card" aria-label="Filters">
+  <label>Season<div class="seg" id="f-season">
+    <button data-val="all" aria-pressed="true">All</button><button data-val="Summer" aria-pressed="false">Summer</button><button data-val="Winter" aria-pressed="false">Winter</button>
+  </div></label>
+  <label>From<select id="f-from"></select></label>
+  <label>To<select id="f-to"></select></label>
+  <label>Host nation<select id="f-nation"><option value="all">All nations</option></select></label>
+  <label>Outcome<div class="seg" id="f-outcome">
+    <button data-val="all" aria-pressed="true">All</button><button data-val="beat" aria-pressed="false">Beat usual</button><button data-val="short" aria-pressed="false">Fell short</button>
+  </div></label>
+  <span class="chip" id="f-picked" role="button" tabindex="0"></span>
+  <button class="reset" id="f-reset">Reset all</button>
+</section>
+
+<section class="charts">
+  <div class="panel card wide">
+    <h2>Medal share at home against usual share</h2>
+    <p class="note">Usual share is the host's average at every other Games of the same season.</p>
+    <div class="legend"><span><i class="key" style="background:var(--summer)"></i>Summer, at home</span><span><i class="key" style="background:var(--winter)"></i>Winter, at home</span><span><i class="key" style="background:var(--usual)"></i>Usual share</span></div>
+    <div class="chart" id="c-bars"></div>
+  </div>
+  <div class="panel card">
+    <h2>Before, during and after hosting</h2>
+    <p class="note" id="c-event-note"></p>
+    <div class="legend" id="c-event-legend"></div>
+    <div class="chart" id="c-event"></div>
+  </div>
+  <div class="panel card">
+    <h2>Every host against its own normal</h2>
+    <p class="note">Points above the line won a bigger share at home than usual.</p>
+    <div class="legend"><span><i class="key" style="background:var(--summer);border-radius:50%"></i>Summer</span><span><i class="key" style="background:var(--winter);transform:rotate(45deg) scale(.85)"></i>Winter</span></div>
+    <div class="chart" id="c-scatter"></div>
+  </div>
+  <div class="panel card wide">
+    <h2>Hostings in the current selection</h2>
+    <div class="tablewrap"><table>
+      <thead><tr><th>Games</th><th>Host</th><th>Medals</th><th>Golds</th><th>Share at home</th><th>Usual share</th><th>Uplift</th></tr></thead>
+      <tbody id="t-body"></tbody>
+    </table></div>
+  </div>
+</section>
+</main>
+
+<script>
+const DATA = {"hostings": [{"games_id": "1960S", "year": 1960, "season": "Summer", "city": "Rome", "nation_id": "ITA", "nation": "Italy", "medals": 36, "golds": 13, "host_share": 0.078091, "usual_share": 0.032623}, {"games_id": "1960W", "year": 1960, "season": "Winter", "city": "Squaw Valley", "nation_id": "USA", "nation": "United States", "medals": 10, "golds": 3, "host_share": 0.123457, "usual_share": 0.08489}, {"games_id": "1964S", "year": 1964, "season": "Summer", "city": "Tokyo", "nation_id": "JPN", "nation": "Japan", "medals": 29, "golds": 16, "host_share": 0.05754, "usual_share": 0.036579}, {"games_id": "1964W", "year": 1964, "season": "Winter", "city": "Innsbruck", "nation_id": "AUT", "nation": "Austria", "medals": 12, "golds": 4, "host_share": 0.115385, "usual_share": 0.065636}, {"games_id": "1968S", "year": 1968, "season": "Summer", "city": "Mexico City", "nation_id": "MEX", "nation": "Mexico", "medals": 9, "golds": 3, "host_share": 0.017078, "usual_share": 0.004137}, {"games_id": "1968W", "year": 1968, "season": "Winter", "city": "Grenoble", "nation_id": "FRA", "nation": "France", "medals": 9, "golds": 4, "host_share": 0.084906, "usual_share": 0.037846}, {"games_id": "1972S", "year": 1972, "season": "Summer", "city": "Munich", "nation_id": "GER", "nation": "Germany (incl. West Germany)", "medals": 40, "golds": 13, "host_share": 0.066667, "usual_share": 0.06213}, {"games_id": "1972W", "year": 1972, "season": "Winter", "city": "Sapporo", "nation_id": "JPN", "nation": "Japan", "medals": 3, "golds": 1, "host_share": 0.028571, "usual_share": 0.021561}, {"games_id": "1976S", "year": 1976, "season": "Summer", "city": "Montreal", "nation_id": "CAN", "nation": "Canada", "medals": 11, "golds": 0, "host_share": 0.017945, "usual_share": 0.019468}, {"games_id": "1976W", "year": 1976, "season": "Winter", "city": "Innsbruck", "nation_id": "AUT", "nation": "Austria", "medals": 6, "golds": 2, "host_share": 0.054054, "usual_share": 0.069244}, {"games_id": "1980S", "year": 1980, "season": "Summer", "city": "Moscow", "nation_id": "RUS", "nation": "Russia (incl. Soviet Union)", "medals": 195, "golds": 80, "host_share": 0.309033, "usual_share": 0.127936}, {"games_id": "1980W", "year": 1980, "season": "Winter", "city": "Lake Placid", "nation_id": "USA", "nation": "United States", "medals": 12, "golds": 6, "host_share": 0.104348, "usual_share": 0.086014}, {"games_id": "1984S", "year": 1984, "season": "Summer", "city": "Los Angeles", "nation_id": "USA", "nation": "United States", "medals": 174, "golds": 83, "host_share": 0.252907, "usual_share": 0.134114}, {"games_id": "1984W", "year": 1984, "season": "Winter", "city": "Sarajevo", "nation_id": "SRB", "nation": "Serbia (incl. Yugoslavia)", "medals": 1, "golds": 0, "host_share": 0.008547, "usual_share": 0.001553}, {"games_id": "1988S", "year": 1988, "season": "Summer", "city": "Seoul", "nation_id": "KOR", "nation": "South Korea", "medals": 33, "golds": 12, "host_share": 0.044655, "usual_share": 0.021034}, {"games_id": "1988W", "year": 1988, "season": "Winter", "city": "Calgary", "nation_id": "CAN", "nation": "Canada", "medals": 5, "golds": 0, "host_share": 0.036232, "usual_share": 0.056889}, {"games_id": "1992S", "year": 1992, "season": "Summer", "city": "Barcelona", "nation_id": "ESP", "nation": "Spain", "medals": 22, "golds": 13, "host_share": 0.026994, "usual_share": 0.010879}, {"games_id": "1992W", "year": 1992, "season": "Winter", "city": "Albertville", "nation_id": "FRA", "nation": "France", "medals": 9, "golds": 3, "host_share": 0.052632, "usual_share": 0.039745}, {"games_id": "1994W", "year": 1994, "season": "Winter", "city": "Lillehammer", "nation_id": "NOR", "nation": "Norway", "medals": 26, "golds": 10, "host_share": 0.142077, "usual_share": 0.099234}, {"games_id": "1996S", "year": 1996, "season": "Summer", "city": "Atlanta", "nation_id": "USA", "nation": "United States", "medals": 101, "golds": 44, "host_share": 0.119952, "usual_share": 0.142978}, {"games_id": "1998W", "year": 1998, "season": "Winter", "city": "Nagano", "nation_id": "JPN", "nation": "Japan", "medals": 10, "golds": 5, "host_share": 0.04878, "usual_share": 0.020372}, {"games_id": "2000S", "year": 2000, "season": "Summer", "city": "Sydney", "nation_id": "AUS", "nation": "Australia", "medals": 58, "golds": 16, "host_share": 0.062567, "usual_share": 0.035233}, {"games_id": "2002W", "year": 2002, "season": "Winter", "city": "Salt Lake City", "nation_id": "USA", "nation": "United States", "medals": 34, "golds": 10, "host_share": 0.145299, "usual_share": 0.083605}, {"games_id": "2004S", "year": 2004, "season": "Summer", "city": "Athens", "nation_id": "GRE", "nation": "Greece", "medals": 16, "golds": 6, "host_share": 0.017279, "usual_share": 0.004072}, {"games_id": "2006W", "year": 2006, "season": "Winter", "city": "Torino", "nation_id": "ITA", "nation": "Italy", "medals": 11, "golds": 5, "host_share": 0.043651, "usual_share": 0.044428}, {"games_id": "2008S", "year": 2008, "season": "Summer", "city": "Beijing", "nation_id": "CHN", "nation": "China", "medals": 100, "golds": 48, "host_share": 0.104384, "usual_share": 0.067796}, {"games_id": "2010W", "year": 2010, "season": "Winter", "city": "Vancouver", "nation_id": "CAN", "nation": "Canada", "medals": 26, "golds": 14, "host_share": 0.100775, "usual_share": 0.053093}, {"games_id": "2012S", "year": 2012, "season": "Summer", "city": "London", "nation_id": "GBR", "nation": "Great Britain", "medals": 65, "golds": 29, "host_share": 0.067638, "usual_share": 0.038947}, {"games_id": "2014W", "year": 2014, "season": "Winter", "city": "Sochi", "nation_id": "RUS", "nation": "Russia (incl. Soviet Union)", "medals": 29, "golds": 10, "host_share": 0.098305, "usual_share": 0.14545}, {"games_id": "2016S", "year": 2016, "season": "Summer", "city": "Rio de Janeiro", "nation_id": "BRA", "nation": "Brazil", "medals": 19, "golds": 7, "host_share": 0.019547, "usual_share": 0.010248}, {"games_id": "2018W", "year": 2018, "season": "Winter", "city": "PyeongChang", "nation_id": "KOR", "nation": "South Korea", "medals": 17, "golds": 5, "host_share": 0.055375, "usual_share": 0.016686}, {"games_id": "2020S", "year": 2020, "season": "Summer", "city": "Tokyo", "nation_id": "JPN", "nation": "Japan", "medals": 58, "golds": 27, "host_share": 0.053704, "usual_share": 0.036834}, {"games_id": "2022W", "year": 2022, "season": "Winter", "city": "Beijing", "nation_id": "CHN", "nation": "China", "medals": 15, "golds": 9, "host_share": 0.045732, "usual_share": 0.024687}, {"games_id": "2024S", "year": 2024, "season": "Summer", "city": "Paris", "nation_id": "FRA", "nation": "France", "medals": 64, "golds": 16, "host_share": 0.061303, "usual_share": 0.031324}, {"games_id": "2026W", "year": 2026, "season": "Winter", "city": "Milano Cortina", "nation_id": "ITA", "nation": "Italy", "medals": 30, "golds": 10, "host_share": 0.08596, "usual_share": 0.041939}], "events": [{"host_games": "1968S", "rel": -2, "change_pp": 0.0}, {"host_games": "1968S", "rel": -1, "change_pp": -0.0185}, {"host_games": "1968S", "rel": 0, "change_pp": 1.4909}, {"host_games": "1968S", "rel": 1, "change_pp": -0.0503}, {"host_games": "1968S", "rel": 2, "change_pp": 0.1093}, {"host_games": "1968S", "rel": 3, "change_pp": 0.417}, {"host_games": "1968W", "rel": -2, "change_pp": 0.0}, {"host_games": "1968W", "rel": -1, "change_pp": 3.0271}, {"host_games": "1968W", "rel": 0, "change_pp": 4.7869}, {"host_games": "1968W", "rel": 1, "change_pp": -0.8466}, {"host_games": "1968W", "rel": 2, "change_pp": -2.8028}, {"host_games": "1968W", "rel": 3, "change_pp": -2.8341}, {"host_games": "1972S", "rel": -3, "change_pp": -0.405}, {"host_games": "1972S", "rel": -2, "change_pp": 0.405}, {"host_games": "1972S", "rel": -1, "change_pp": -4.582}, {"host_games": "1972S", "rel": 0, "change_pp": -2.849}, {"host_games": "1972S", "rel": 1, "change_pp": -3.1535}, {"host_games": "1972S", "rel": 3, "change_pp": -0.9401}, {"host_games": "1972W", "rel": -3, "change_pp": 0.0}, {"host_games": "1972W", "rel": -2, "change_pp": 0.0}, {"host_games": "1972W", "rel": -1, "change_pp": 0.0}, {"host_games": "1972W", "rel": 0, "change_pp": 2.8571}, {"host_games": "1972W", "rel": 1, "change_pp": 0.0}, {"host_games": "1972W", "rel": 2, "change_pp": 0.8696}, {"host_games": "1972W", "rel": 3, "change_pp": 0.8547}, {"host_games": "1976S", "rel": -3, "change_pp": -0.0776}, {"host_games": "1976S", "rel": -2, "change_pp": 0.0776}, {"host_games": "1976S", "rel": -1, "change_pp": -0.0379}, {"host_games": "1976S", "rel": 0, "change_pp": 0.9232}, {"host_games": "1976S", "rel": 2, "change_pp": 5.5241}, {"host_games": "1976S", "rel": 3, "change_pp": 0.482}, {"host_games": "1976W", "rel": -3, "change_pp": 0.5806}, {"host_games": "1976W", "rel": -2, "change_pp": -0.5806}, {"host_games": "1976W", "rel": -1, "change_pp": -6.196}, {"host_games": "1976W", "rel": 0, "change_pp": -5.5525}, {"host_games": "1976W", "rel": 1, "change_pp": -4.871}, {"host_games": "1976W", "rel": 2, "change_pp": -10.1032}, {"host_games": "1976W", "rel": 3, "change_pp": -3.7115}, {"host_games": "1980S", "rel": -3, "change_pp": 0.3838}, {"host_games": "1980S", "rel": -2, "change_pp": -0.3838}, {"host_games": "1980S", "rel": -1, "change_pp": 3.5077}, {"host_games": "1980S", "rel": 0, "change_pp": 14.0196}, {"host_games": "1980S", "rel": 2, "change_pp": 0.9782}, {"host_games": "1980S", "rel": 3, "change_pp": -3.1414}, {"host_games": "1980W", "rel": -3, "change_pp": -0.5076}, {"host_games": "1980W", "rel": -2, "change_pp": 0.5076}, {"host_games": "1980W", "rel": -1, "change_pp": 1.8976}, {"host_games": "1980W", "rel": 0, "change_pp": 3.3234}, {"host_games": "1980W", "rel": 1, "change_pp": -0.2738}, {"host_games": "1980W", "rel": 2, "change_pp": -2.7636}, {"host_games": "1980W", "rel": 3, "change_pp": -0.6787}, {"host_games": "1984S", "rel": -3, "change_pp": 0.1661}, {"host_games": "1984S", "rel": -2, "change_pp": -0.1661}, {"host_games": "1984S", "rel": 0, "change_pp": 9.7902}, {"host_games": "1984S", "rel": 1, "change_pp": -2.7807}, {"host_games": "1984S", "rel": 2, "change_pp": -2.249}, {"host_games": "1984S", "rel": 3, "change_pp": -3.5053}, {"host_games": "1984W", "rel": -3, "change_pp": 0.0}, {"host_games": "1984W", "rel": -2, "change_pp": 0.0}, {"host_games": "1984W", "rel": -1, "change_pp": 0.0}, {"host_games": "1984W", "rel": 0, "change_pp": 0.8547}, {"host_games": "1984W", "rel": 1, "change_pp": 2.1739}, {"host_games": "1984W", "rel": 2, "change_pp": 0.0}, {"host_games": "1988S", "rel": -3, "change_pp": 0.0}, {"host_games": "1988S", "rel": -1, "change_pp": 1.7828}, {"host_games": "1988S", "rel": 0, "change_pp": 3.4867}, {"host_games": "1988S", "rel": 1, "change_pp": 2.5795}, {"host_games": "1988S", "rel": 2, "change_pp": 2.2279}, {"host_games": "1988S", "rel": 3, "change_pp": 2.0417}, {"host_games": "1988W", "rel": -3, "change_pp": 0.4818}, {"host_games": "1988W", "rel": -2, "change_pp": -0.4818}, {"host_games": "1988W", "rel": -1, "change_pp": 1.1979}, {"host_games": "1988W", "rel": 0, "change_pp": 1.4023}, {"host_games": "1988W", "rel": 1, "change_pp": 1.8727}, {"host_games": "1988W", "rel": 2, "change_pp": 4.8829}, {"host_games": "1988W", "rel": 3, "change_pp": 5.0962}, {"host_games": "1992S", "rel": -3, "change_pp": 0.1121}, {"host_games": "1992S", "rel": -2, "change_pp": -0.1121}, {"host_games": "1992S", "rel": -1, "change_pp": -0.2975}, {"host_games": "1992S", "rel": 0, "change_pp": 1.8606}, {"host_games": "1992S", "rel": 1, "change_pp": 1.1802}, {"host_games": "1992S", "rel": 2, "change_pp": 0.3478}, {"host_games": "1992S", "rel": 3, "change_pp": 1.321}, {"host_games": "1992W", "rel": -3, "change_pp": -0.8473}, {"host_games": "1992W", "rel": -2, "change_pp": 0.8473}, {"host_games": "1992W", "rel": -1, "change_pp": -0.2676}, {"host_games": "1992W", "rel": 0, "change_pp": 3.5463}, {"host_games": "1992W", "rel": 1, "change_pp": 1.0154}, {"host_games": "1992W", "rel": 2, "change_pp": 2.1856}, {"host_games": "1992W", "rel": 3, "change_pp": 2.984}, {"host_games": "1994W", "rel": -3, "change_pp": 2.0346}, {"host_games": "1994W", "rel": -2, "change_pp": -2.0346}, {"host_games": "1994W", "rel": -1, "change_pp": 6.0382}, {"host_games": "1994W", "rel": 0, "change_pp": 8.5499}, {"host_games": "1994W", "rel": 1, "change_pp": 6.5374}, {"host_games": "1994W", "rel": 2, "change_pp": 5.026}, {"host_games": "1994W", "rel": 3, "change_pp": 1.8819}, {"host_games": "1996S", "rel": -3, "change_pp": 6.2854}, {"host_games": "1996S", "rel": -2, "change_pp": -6.2854}, {"host_games": "1996S", "rel": -1, "change_pp": -5.7538}, {"host_games": "1996S", "rel": 0, "change_pp": -7.01}, {"host_games": "1996S", "rel": 1, "change_pp": -8.9729}, {"host_games": "1996S", "rel": 2, "change_pp": -8.0982}, {"host_games": "1996S", "rel": 3, "change_pp": -7.3143}, {"host_games": "1998W", "rel": -3, "change_pp": -1.6845}, {"host_games": "1998W", "rel": -2, "change_pp": 1.6845}, {"host_games": "1998W", "rel": -1, "change_pp": 0.3231}, {"host_games": "1998W", "rel": 0, "change_pp": 2.4689}, {"host_games": "1998W", "rel": 1, "change_pp": -1.5544}, {"host_games": "1998W", "rel": 2, "change_pp": -2.0123}, {"host_games": "1998W", "rel": 3, "change_pp": -0.4711}, {"host_games": "2000S", "rel": -3, "change_pp": -0.7092}, {"host_games": "2000S", "rel": -2, "change_pp": 0.7092}, {"host_games": "2000S", "rel": -1, "change_pp": 2.2657}, {"host_games": "2000S", "rel": 0, "change_pp": 3.6531}, {"host_games": "2000S", "rel": 1, "change_pp": 2.7959}, {"host_games": "2000S", "rel": 2, "change_pp": 2.198}, {"host_games": "2000S", "rel": 3, "change_pp": 1.0384}, {"host_games": "2002W", "rel": -3, "change_pp": -0.3355}, {"host_games": "2002W", "rel": -2, "change_pp": 0.3355}, {"host_games": "2002W", "rel": -1, "change_pp": -0.4268}, {"host_games": "2002W", "rel": 0, "change_pp": 7.7616}, {"host_games": "2002W", "rel": 1, "change_pp": 3.1523}, {"host_games": "2002W", "rel": 2, "change_pp": 7.5728}, {"host_games": "2002W", "rel": 3, "change_pp": 2.7232}, {"host_games": "2004S", "rel": -3, "change_pp": -0.3524}, {"host_games": "2004S", "rel": -2, "change_pp": 0.3524}, {"host_games": "2004S", "rel": -1, "change_pp": 0.8046}, {"host_games": "2004S", "rel": 0, "change_pp": 1.1301}, {"host_games": "2004S", "rel": 1, "change_pp": -0.2846}, {"host_games": "2004S", "rel": 2, "change_pp": -0.3896}, {"host_games": "2004S", "rel": 3, "change_pp": 0.0195}, {"host_games": "2006W", "rel": -3, "change_pp": 3.0255}, {"host_games": "2006W", "rel": -2, "change_pp": -3.0255}, {"host_games": "2006W", "rel": -1, "change_pp": -2.3479}, {"host_games": "2006W", "rel": 0, "change_pp": -3.5384}, {"host_games": "2006W", "rel": 1, "change_pp": -5.9655}, {"host_games": "2006W", "rel": 2, "change_pp": -5.1916}, {"host_games": "2006W", "rel": 3, "change_pp": -4.6462}, {"host_games": "2008S", "rel": -3, "change_pp": -0.1592}, {"host_games": "2008S", "rel": -2, "change_pp": 0.1592}, {"host_games": "2008S", "rel": -1, "change_pp": 0.706}, {"host_games": "2008S", "rel": 0, "change_pp": 4.3409}, {"host_games": "2008S", "rel": 1, "change_pp": 3.4759}, {"host_games": "2008S", "rel": 2, "change_pp": 1.1042}, {"host_games": "2008S", "rel": 3, "change_pp": 2.1432}, {"host_games": "2010W", "rel": -3, "change_pp": 0.0261}, {"host_games": "2010W", "rel": -2, "change_pp": -0.0261}, {"host_games": "2010W", "rel": -1, "change_pp": 2.2328}, {"host_games": "2010W", "rel": 0, "change_pp": 2.7865}, {"host_games": "2010W", "rel": 1, "change_pp": 1.1836}, {"host_games": "2010W", "rel": 2, "change_pp": 2.1552}, {"host_games": "2010W", "rel": 3, "change_pp": 0.6358}, {"host_games": "2012S", "rel": -3, "change_pp": -0.1096}, {"host_games": "2012S", "rel": -2, "change_pp": 0.1096}, {"host_games": "2012S", "rel": -1, "change_pp": 2.1935}, {"host_games": "2012S", "rel": 0, "change_pp": 3.6337}, {"host_games": "2012S", "rel": 1, "change_pp": 3.7629}, {"host_games": "2012S", "rel": 2, "change_pp": 2.7958}, {"host_games": "2012S", "rel": 3, "change_pp": 3.0959}, {"host_games": "2014W", "rel": -3, "change_pp": -1.5873}, {"host_games": "2014W", "rel": -2, "change_pp": 1.5873}, {"host_games": "2014W", "rel": -1, "change_pp": -2.1041}, {"host_games": "2014W", "rel": 0, "change_pp": 2.6877}, {"host_games": "2014W", "rel": 1, "change_pp": -1.6054}, {"host_games": "2014W", "rel": 2, "change_pp": 2.6132}, {"host_games": "2016S", "rel": -3, "change_pp": -0.3473}, {"host_games": "2016S", "rel": -2, "change_pp": 0.3473}, {"host_games": "2016S", "rel": -1, "change_pp": 0.3418}, {"host_games": "2016S", "rel": 0, "change_pp": 0.5275}, {"host_games": "2016S", "rel": 1, "change_pp": 0.5172}, {"host_games": "2016S", "rel": 2, "change_pp": 0.4885}, {"host_games": "2018W", "rel": -3, "change_pp": -0.5306}, {"host_games": "2018W", "rel": -2, "change_pp": 0.5306}, {"host_games": "2018W", "rel": -1, "change_pp": -2.1839}, {"host_games": "2018W", "rel": 0, "change_pp": 0.6417}, {"host_games": "2018W", "rel": 1, "change_pp": -2.1518}, {"host_games": "2018W", "rel": 2, "change_pp": -2.0304}, {"host_games": "2020S", "rel": -3, "change_pp": -0.6723}, {"host_games": "2020S", "rel": -2, "change_pp": 0.6723}, {"host_games": "2020S", "rel": -1, "change_pp": 0.9362}, {"host_games": "2020S", "rel": 0, "change_pp": 2.0885}, {"host_games": "2020S", "rel": 1, "change_pp": 1.0284}, {"host_games": "2022W", "rel": -3, "change_pp": 0.6064}, {"host_games": "2022W", "rel": -2, "change_pp": -0.6064}, {"host_games": "2022W", "rel": -1, "change_pp": -0.7256}, {"host_games": "2022W", "rel": 0, "change_pp": 0.916}, {"host_games": "2022W", "rel": 1, "change_pp": 0.6408}, {"host_games": "2024S", "rel": -3, "change_pp": -0.3395}, {"host_games": "2024S", "rel": -2, "change_pp": 0.3395}, {"host_games": "2024S", "rel": -1, "change_pp": -0.926}, {"host_games": "2024S", "rel": 0, "change_pp": 2.1488}, {"host_games": "2026W", "rel": -3, "change_pp": -0.2727}, {"host_games": "2026W", "rel": -2, "change_pp": 0.2727}, {"host_games": "2026W", "rel": -1, "change_pp": 2.1983}, {"host_games": "2026W", "rel": 0, "change_pp": 5.6114}]};
+
+const H = DATA.hostings.map(h => ({
+  ...h, ratio: h.host_share / h.usual_share, beat: h.host_share > h.usual_share,
+  label: `${h.city} ${h.year}`,
+}));
+const $ = id => document.getElementById(id);
+const YEARS = [...new Set(H.map(h => h.year))].sort((a, b) => a - b);
+$("intro").textContent = `${H.length} Summer and Winter Games, ${YEARS[0]} to ${YEARS.at(-1)}. Click a KPI, a bar, a point or a table row to filter; click again to clear.`;
+const state = { season: "all", outcome: "all", nation: "all", from: YEARS[0], to: YEARS.at(-1), picked: new Set() };
+{
+  const q = new URLSearchParams(location.hash.slice(1));
+  for (const k of ["season", "outcome", "nation"]) if (q.get(k)) state[k] = q.get(k);
+  for (const k of ["from", "to"]) if (q.get(k)) state[k] = +q.get(k);
+  if (q.get("picked")) state.picked = new Set(q.get("picked").split(","));
+}
+function saveHash() {
+  const q = new URLSearchParams();
+  for (const k of ["season", "outcome", "nation"]) if (state[k] !== "all") q.set(k, state[k]);
+  if (state.from !== YEARS[0]) q.set("from", state.from);
+  if (state.to !== YEARS.at(-1)) q.set("to", state.to);
+  if (state.picked.size) q.set("picked", [...state.picked].join(","));
+  try { history.replaceState(null, "", q.toString() ? "#" + q : location.pathname); } catch { /* file URLs in some browsers */ }
+}
+
+/* filtering */
+// Every filter except `skip`, so a KPI toggle can still show the count for its other option.
+function base(skip) {
+  return H.filter(h =>
+    (skip === "season" || state.season === "all" || h.season === state.season) &&
+    (skip === "outcome" || state.outcome === "all" || (state.outcome === "beat") === h.beat) &&
+    (state.nation === "all" || h.nation_id === state.nation) &&
+    h.year >= state.from && h.year <= state.to);
+}
+const applyPicked = rows => state.picked.size ? rows.filter(h => state.picked.has(h.games_id)) : rows;
+
+/* controls */
+for (const id of ["f-from", "f-to"]) {
+  for (const y of YEARS) { const o = document.createElement("option"); o.value = y; o.textContent = y; $(id).append(o); }
+}
+$("f-to").value = state.to;
+const nations = [...new Map(H.map(h => [h.nation_id, h.nation])).entries()].sort((a, b) => a[1].localeCompare(b[1]));
+for (const [id, name] of nations) {
+  const n = H.filter(h => h.nation_id === id).length;
+  const o = document.createElement("option"); o.value = id; o.textContent = `${name} (${n})`; $("f-nation").append(o);
+}
+function toggle(key, val) { state[key] = state[key] === val ? "all" : val; render(); }
+document.querySelectorAll("button.kpi").forEach(b => b.addEventListener("click", () => toggle(b.dataset.kpi, b.dataset.val)));
+for (const key of ["season", "outcome"]) {
+  $("f-" + key).querySelectorAll("button").forEach(b => b.addEventListener("click", () => { state[key] = b.dataset.val; render(); }));
+}
+$("f-from").addEventListener("change", e => { state.from = +e.target.value; if (state.from > state.to) state.to = state.from; render(); });
+$("f-to").addEventListener("change", e => { state.to = +e.target.value; if (state.to < state.from) state.from = state.to; render(); });
+$("f-nation").addEventListener("change", e => { state.nation = e.target.value; render(); });
+$("f-picked").addEventListener("click", () => { state.picked.clear(); render(); });
+$("f-picked").addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { state.picked.clear(); render(); } });
+$("f-reset").addEventListener("click", () => {
+  Object.assign(state, { season: "all", outcome: "all", nation: "all", from: YEARS[0], to: YEARS.at(-1) });
+  state.picked.clear(); render();
+});
+function pick(id) { state.picked.has(id) ? state.picked.delete(id) : state.picked.add(id); render(); }
+
+/* formatting */
+const pct = v => (100 * v).toFixed(1) + "%";
+const css = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+const seasonColour = s => css(s === "Summer" ? "--summer" : "--winter");
+const median = xs => { if (!xs.length) return NaN; const s = [...xs].sort((a, b) => a - b), m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+
+/* charts */
+const charts = { bars: echarts.init($("c-bars")), event: echarts.init($("c-event")), scatter: echarts.init($("c-scatter")) };
+charts.bars.on("click", p => pick(p.data.id));
+charts.scatter.on("click", p => p.data && p.data.id && pick(p.data.id));
+window.addEventListener("resize", () => Object.values(charts).forEach(c => c.resize()));
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", render);
+
+function axisStyle() {
+  return {
+    axisLine: { lineStyle: { color: css("--axis") } }, axisTick: { show: false },
+    axisLabel: { color: css("--ink2") }, splitLine: { lineStyle: { color: css("--grid") } },
+  };
+}
+function tooltipStyle() {
+  return { backgroundColor: css("--surface"), borderColor: css("--axis"), textStyle: { color: css("--ink"), fontSize: 13 }, extraCssText: "box-shadow:0 2px 8px rgba(0,0,0,.15);" };
+}
+const dimmed = h => state.picked.size && !state.picked.has(h.games_id);
+const tipRow = (colour, value, label) =>
+  `<div style="display:flex;align-items:center;gap:8px"><i style="width:12px;height:2px;background:${colour}"></i><b>${value}</b><span style="color:${css("--ink2")}">${label}</span></div>`;
+
+function drawBars(rows) {
+  const el = $("c-bars");
+  el.style.height = Math.max(160, rows.length * 26 + 50) + "px";
+  charts.bars.resize();
+  const ax = axisStyle();
+  charts.bars.setOption({
+    animationDuration: 250, grid: { left: 140, right: 24, top: 8, bottom: 28 },
+    tooltip: { ...tooltipStyle(), trigger: "axis", axisPointer: { type: "shadow", shadowStyle: { color: css("--wash") } },
+      formatter: ps => { const h = rows[ps[0].dataIndex]; return `<div style="margin-bottom:4px">${h.label}, ${h.nation}</div>` +
+        tipRow(seasonColour(h.season), pct(h.host_share), "at home") + tipRow(css("--usual"), pct(h.usual_share), "usual") +
+        `<div style="margin-top:4px">${h.ratio.toFixed(2)}× usual</div>`; } },
+    xAxis: { type: "value", ...ax, axisLabel: { ...ax.axisLabel, formatter: v => v + "%" } },
+    yAxis: { type: "category", inverse: true, data: rows.map(h => h.label), ...ax, splitLine: { show: false } },
+    series: [
+      { name: "At home", type: "bar", barGap: "10%", barCategoryGap: "30%",
+        data: rows.map(h => ({ value: +(100 * h.host_share).toFixed(2), id: h.games_id,
+          itemStyle: { color: seasonColour(h.season), opacity: dimmed(h) ? 0.25 : 1, borderRadius: [0, 4, 4, 0] } })) },
+      { name: "Usual", type: "bar",
+        data: rows.map(h => ({ value: +(100 * h.usual_share).toFixed(2), id: h.games_id,
+          itemStyle: { color: css("--usual"), opacity: dimmed(h) ? 0.25 : 1, borderRadius: [0, 4, 4, 0] } })) },
+    ],
+  }, true);
+}
+
+const REL = [-3, -2, -1, 0, 1, 2, 3];
+const REL_LABEL = r => r === 0 ? "Home" : r < 0 ? `${-r} before` : `${r} after`;
+function drawEvent(rows) {
+  const ids = new Set(rows.map(h => h.games_id));
+  const seasons = ["Summer", "Winter"].filter(s => rows.some(h => h.season === s));
+  const series = seasons.map(s => {
+    const games = new Set(rows.filter(h => h.season === s).map(h => h.games_id));
+    const ev = DATA.events.filter(e => games.has(e.host_games));
+    const pts = REL.map(r => { const v = ev.filter(e => e.rel === r).map(e => e.change_pp); return v.length ? +(v.reduce((a, b) => a + b, 0) / v.length).toFixed(2) : null; });
+    return { name: s, type: "line", data: pts, connectNulls: true, symbol: s === "Summer" ? "circle" : "diamond", symbolSize: 8,
+      lineStyle: { width: 2, color: seasonColour(s) }, itemStyle: { color: seasonColour(s), borderColor: css("--surface"), borderWidth: 2 } };
+  });
+  const n = new Set(DATA.events.filter(e => ids.has(e.host_games)).map(e => e.host_games)).size;
+  $("c-event-note").textContent = n
+    ? `Mean change in medal share, in percentage points, from each host's own level three and two Games before. ${n} of ${rows.length} hostings have that history.`
+    : "None of the selected hostings has three earlier Games of the same season to compare with.";
+  const legend = $("c-event-legend"); legend.replaceChildren();
+  for (const s of seasons) { const sp = document.createElement("span"); sp.innerHTML = `<i class="key" style="background:${seasonColour(s)};height:2px;width:14px"></i>`; sp.append(s); legend.append(sp); }
+  const ax = axisStyle();
+  charts.event.setOption({
+    animationDuration: 250, grid: { left: 60, right: 28, top: 12, bottom: 36 },
+    tooltip: { ...tooltipStyle(), trigger: "axis", axisPointer: { type: "line", lineStyle: { color: css("--muted") } },
+      formatter: ps => `<div style="margin-bottom:4px">${ps[0].axisValue}</div>` + ps.filter(p => p.value != null)
+        .map(p => tipRow(p.color, (p.value > 0 ? "+" : "") + p.value + " pp", p.seriesName)).join("") },
+    xAxis: { type: "category", data: REL.map(REL_LABEL), boundaryGap: false, ...ax, axisLabel: { ...ax.axisLabel, margin: 14 }, splitLine: { show: false } },
+    yAxis: { type: "value", ...ax, axisLabel: { ...ax.axisLabel, formatter: v => v + " pp" } },
+    series: series.length ? [{ ...series[0], markLine: { silent: true, symbol: "none", label: { show: false }, lineStyle: { color: css("--axis"), type: "solid" }, data: [{ yAxis: 0 }] } }, ...series.slice(1)] : [],
+  }, true);
+}
+
+function drawScatter(rows) {
+  const max = 5 * Math.ceil(Math.max(5, ...rows.map(h => 100 * Math.max(h.host_share, h.usual_share))) * 1.02 / 5);
+  const ax = axisStyle();
+  const series = ["Summer", "Winter"].map(s => ({
+    name: s, type: "scatter", symbol: s === "Summer" ? "circle" : "diamond", symbolSize: s === "Summer" ? 10 : 12,
+    data: rows.filter(h => h.season === s).map(h => ({ value: [+(100 * h.usual_share).toFixed(2), +(100 * h.host_share).toFixed(2)], id: h.games_id, h,
+      itemStyle: { color: seasonColour(s), opacity: dimmed(h) ? 0.25 : 1, borderColor: css("--surface"), borderWidth: 2 } })),
+    emphasis: { scale: 1.4 },
+  }));
+  series.push({ type: "line", silent: true, symbol: "none", data: [[0, 0], [max, max]], lineStyle: { color: css("--muted"), type: "dashed", width: 1 }, tooltip: { show: false } });
+  charts.scatter.setOption({
+    animationDuration: 250, grid: { left: 44, right: 16, top: 12, bottom: 40 },
+    tooltip: { ...tooltipStyle(), trigger: "item", formatter: p => { const h = p.data.h; return `<div style="margin-bottom:4px">${h.label}, ${h.nation}</div>` +
+      tipRow(seasonColour(h.season), pct(h.host_share), "at home") + tipRow(css("--usual"), pct(h.usual_share), "usual"); } },
+    xAxis: { type: "value", max, name: "Usual share", nameLocation: "middle", nameGap: 26, nameTextStyle: { color: css("--ink2") }, ...ax, axisLabel: { ...ax.axisLabel, formatter: v => v + "%" } },
+    yAxis: { type: "value", max, ...ax, axisLabel: { ...ax.axisLabel, formatter: v => v + "%" } },
+    series,
+  }, true);
+}
+
+function drawTable(rows) {
+  const body = $("t-body"); body.replaceChildren();
+  for (const h of rows) {
+    const tr = document.createElement("tr");
+    if (state.picked.has(h.games_id)) tr.className = "picked";
+    for (const v of [h.label, h.nation, h.medals, h.golds, pct(h.host_share), pct(h.usual_share), h.ratio.toFixed(2) + "×"]) {
+      const td = document.createElement("td"); td.textContent = v; tr.append(td);
+    }
+    tr.addEventListener("click", () => pick(h.games_id));
+    body.append(tr);
+  }
+}
+
+/* render */
+function render() {
+  const visible = base();
+  for (const id of [...state.picked]) if (!visible.some(h => h.games_id === id)) state.picked.delete(id);
+  const sel = applyPicked(visible);
+
+  // KPIs follow every filter, including bars or points picked in a chart.
+  $("k-n").textContent = sel.length;
+  $("k-n-sub").textContent = sel.length === H.length ? "all Games in the data" : `of ${H.length} in the data`;
+  const up = median(sel.map(h => h.ratio));
+  $("k-uplift").textContent = isNaN(up) ? "None" : up.toFixed(2) + "×";
+  $("k-medals").textContent = sel.reduce((a, h) => a + h.medals, 0).toLocaleString();
+  $("k-golds").textContent = sel.reduce((a, h) => a + h.golds, 0).toLocaleString() + " of them gold";
+  const bySeason = applyPicked(base("season")), byOutcome = applyPicked(base("outcome"));
+  $("k-summer").textContent = bySeason.filter(h => h.season === "Summer").length;
+  $("k-winter").textContent = bySeason.filter(h => h.season === "Winter").length;
+  $("k-beat").textContent = byOutcome.filter(h => h.beat).length;
+  $("k-short").textContent = byOutcome.filter(h => !h.beat).length;
+  document.querySelectorAll("button.kpi").forEach(b => b.setAttribute("aria-pressed", state[b.dataset.kpi] === b.dataset.val));
+
+  // Filter controls mirror the state, so a KPI click and a filter click stay in step.
+  for (const key of ["season", "outcome"]) $("f-" + key).querySelectorAll("button").forEach(b => b.setAttribute("aria-pressed", state[key] === b.dataset.val));
+  $("f-from").value = state.from; $("f-to").value = state.to; $("f-nation").value = state.nation;
+  const chip = $("f-picked");
+  chip.classList.toggle("on", state.picked.size > 0);
+  chip.textContent = `${state.picked.size} picked in charts ✕`;
+
+  // The bar chart and scatter keep unpicked hostings visible but dimmed; the event study and table use the selection.
+  drawBars(visible);
+  drawScatter(visible);
+  drawEvent(sel);
+  drawTable(sel);
+  saveHash();
+}
+render();
+</script>
+</body>
+</html>
